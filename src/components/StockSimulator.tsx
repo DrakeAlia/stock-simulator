@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -11,39 +10,112 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Area,
+  Bar,
+  ComposedChart,
 } from "recharts";
-import { TrendingUp, TrendingDown, Battery, Zap } from "lucide-react";
+import { Battery, Zap, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TooltipProps } from "recharts";
 import {
   NameType,
   ValueType,
 } from "recharts/types/component/DefaultTooltipContent";
+import ChartSettings from "./ChartSettings";
+import { Badge } from "./ui/badge";
+import MarketDetails from "./MarketDetails";
 
 interface StockDataPoint {
   timestamp: Date;
   price: number;
   displayTime: string;
+  volume: number;
+  ma20?: number;
+  change?: number;
+  changePercent?: number;
+}
+
+interface ThemeStylesType {
+  background: string;
+  text: string;
+  card: string;
+  button: string;
+  border: string;
+}
+
+interface ThemeStyles {
+  dark: ThemeStylesType;
+  light: ThemeStylesType;
 }
 
 type TimeFrame = "1D" | "1W" | "1M" | "1Y";
 
-const AnimatedPrice = ({ price, trend }: { price: number; trend: string }) => {
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={price}
-        initial={{ opacity: 0, y: trend === "up" ? 20 : -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: trend === "up" ? -20 : 20 }}
-        transition={{ duration: 0.3 }}
-        className="text-4xl font-bold md:text-3xl sm:text-2xl"
-      >
-        ${price.toFixed(2)}
-      </motion.div>
-    </AnimatePresence>
-  );
+export const themeStyles: ThemeStyles = {
+  dark: {
+    background: "bg-gray-900",
+    text: "text-white",
+    card: "bg-gray-800",
+    button: "bg-gray-700",
+    border: "border-gray-700",
+  },
+  light: {
+    background: "bg-white",
+    text: "text-gray-900",
+    card: "bg-gray-100",
+    button: "bg-gray-200",
+    border: "border-gray-200",
+  },
 };
+
+// Market Stats Component
+const MarketStats = ({
+  data,
+  theme,
+}: {
+  data: StockDataPoint[];
+  theme: "dark" | "light";
+}) => (
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
+      <p className="text-gray-400 text-sm">Open</p>
+      <p className="text-lg font-bold">${data[0]?.price.toFixed(2)}</p>
+    </div>
+    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
+      <p className="text-gray-400 text-sm">High</p>
+      <p className="text-lg font-bold">
+        ${Math.max(...data.map((d) => d.price)).toFixed(2)}
+      </p>
+    </div>
+    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
+      <p className="text-gray-400 text-sm">Low</p>
+      <p className="text-lg font-bold">
+        ${Math.min(...data.map((d) => d.price)).toFixed(2)}
+      </p>
+    </div>
+    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
+      <p className="text-gray-400 text-sm">Volume</p>
+      <p className="text-lg font-bold">
+        {(Math.random() * 1000000).toFixed(0)}
+      </p>
+    </div>
+  </div>
+);
+
+const NewsTicker = ({ theme }: { theme: "dark" | "light" }) => (
+  <div className={`${themeStyles[theme].card} p-2 mb-4 overflow-hidden`}>
+    <div className="animate-scroll whitespace-nowrap">
+      <span className="text-green-500 mr-4">▲ TSLA +2.3%</span>
+      <span className="text-gray-400 mr-4">
+        Tesla announces new factory in Texas
+      </span>
+      <span className="text-red-500 mr-4">
+        ▼ Market News: Fed considers rate changes
+      </span>
+      <span className="text-gray-400 mr-4">
+        Cybertruck deliveries exceed expectations
+      </span>
+    </div>
+  </div>
+);
 
 const StockSimulator = () => {
   const [mounted, setMounted] = useState(false);
@@ -52,6 +124,11 @@ const StockSimulator = () => {
   const [trend, setTrend] = useState("up");
   const [batteryLevel, setBatteryLevel] = useState(100);
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeFrame>("1D");
+  const [showVolume, setShowVolume] = useState(false);
+  const [showMA, setShowMA] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  const [chartStyle, setChartStyle] = useState("area");
 
   const lastPriceRef = useRef<number>(currentPrice);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -124,6 +201,13 @@ const StockSimulator = () => {
       },
     }[timeframe];
 
+    const generateVolume = () => Math.floor(Math.random() * 1000000);
+    const calculateMA = (prices: number[], period: number) => {
+      return prices.length >= period
+        ? prices.slice(-period).reduce((a, b) => a + b) / period
+        : undefined;
+    };
+
     for (let i = 0; i < config.points; i++) {
       const timestamp = config.getDate(i);
       const volatility = (Math.random() * 8 - 4) * config.volatility;
@@ -133,18 +217,26 @@ const StockSimulator = () => {
         timestamp,
         displayTime: formatTimestamp(timestamp, timeframe),
         price: Number(basePrice.toFixed(2)),
+        volume: generateVolume(),
+        change: basePrice - lastPriceRef.current,
+        changePercent:
+          ((basePrice - lastPriceRef.current) / lastPriceRef.current) * 100,
       });
     }
 
-    const finalPrice = newData[newData.length - 1].price;
-    lastPriceRef.current = finalPrice;
+    const prices = newData.map((d) => d.price);
+    newData.forEach((point, i) => {
+      point.ma20 = calculateMA(prices.slice(0, i + 1), 20);
+    });
 
     setStockData(newData);
-    setCurrentPrice(finalPrice);
-    setTrend(finalPrice >= basePrice ? "up" : "down");
+    setCurrentPrice(basePrice);
+    setTrend(basePrice >= lastPriceRef.current ? "up" : "down");
     setBatteryLevel((prev) =>
       Math.max(0, Math.min(100, prev + (Math.random() * 10 - 5)))
     );
+
+    lastPriceRef.current = basePrice;
   }, []);
 
   useEffect(() => {
@@ -186,7 +278,9 @@ const StockSimulator = () => {
   }: TooltipProps<ValueType, NameType>) => {
     if (active && payload?.[0]?.value) {
       return (
-        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <div
+          className={`${themeStyles[theme].card} p-4 rounded-lg ${themeStyles[theme].border}`}
+        >
           <p className="text-gray-300 text-lg">
             {payload[0].payload.displayTime}
           </p>
@@ -202,12 +296,15 @@ const StockSimulator = () => {
   if (!mounted) return null;
 
   return (
-    <div className="w-full min-h-screen bg-black p-2 sm:p-4 lg:p-8 text-white">
+    <div
+      className={`w-full min-h-screen ${themeStyles[theme].background} ${themeStyles[theme].text} p-2 sm:p-4 lg:p-8`}
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-7xl mx-auto"
       >
+        <NewsTicker theme={theme} />
         {/* Header section - Made responsive */}
         <div className="flex items-center justify-between mb-6 sm:mb-10 px-2 sm:px-4">
           <motion.h1
@@ -236,51 +333,110 @@ const StockSimulator = () => {
           </div>
         </div>
 
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center space-x-4">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentPrice}
+                initial={{ opacity: 0, y: trend === "up" ? 20 : -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: trend === "up" ? -20 : 20 }}
+                className="flex items-center space-x-3"
+              >
+                <span className="text-4xl font-bold">
+                  ${currentPrice.toFixed(2)}
+                </span>
+                <span
+                  className={`text-lg ${
+                    trend === "up" ? "text-green-500" : "text-red-500"
+                  }`}
+                >
+                  {trend === "up" ? "+" : "-"}
+                  {Math.abs(
+                    stockData[stockData.length - 1]?.changePercent || 0
+                  ).toFixed(2)}
+                  %
+                </span>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge variant={trend === "up" ? "secondary" : "destructive"}>
+              {selectedTimeframe}
+            </Badge>
+          </div>
+        </div>
+
         {/* Chart section - Made responsive */}
         <motion.div
-          className="bg-gray-900 rounded-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-10"
+          className={`${themeStyles[theme].card} rounded-xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-10`}
           whileHover={{ scale: 1.01 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl">Current Price</h2>
-            <motion.div
-              className="flex items-center"
-              animate={{ color: trend === "up" ? "#10B981" : "#EF4444" }}
+          {/* Chart controls */}
+          <div className="flex space-x-2 mb-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowVolume(!showVolume)}
+              className={
+                showVolume ? "bg-green-500" : themeStyles[theme].button
+              }
             >
-              {trend === "up" ? (
-                <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-3" />
-              ) : (
-                <TrendingDown className="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-3" />
-              )}
-              <AnimatedPrice price={currentPrice} trend={trend} />
-            </motion.div>
-          </div>
-
-          {/* Timeframe selector - Made responsive */}
-          <div className="flex space-x-2 sm:space-x-4 mb-4 sm:mb-6">
-            {(["1D", "1W", "1M", "1Y"] as TimeFrame[]).map((timeframe) => (
+              Volume
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowMA(!showMA)}
+              className={showMA ? "bg-green-500" : themeStyles[theme].button}
+            >
+              MA(20)
+            </Button>
+            {(["1D", "1W", "1M", "1Y"] as TimeFrame[]).map((tf) => (
               <Button
-                key={timeframe}
-                variant={
-                  selectedTimeframe === timeframe ? "default" : "secondary"
+                key={tf}
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedTimeframe(tf)}
+                className={
+                  selectedTimeframe === tf
+                    ? "bg-green-500"
+                    : themeStyles[theme].button
                 }
-                className={`px-3 py-2 sm:px-6 sm:py-3 text-sm sm:text-lg rounded-lg ${
-                  selectedTimeframe === timeframe
-                    ? "bg-green-500 hover:bg-green-600"
-                    : "bg-gray-700 hover:bg-gray-600"
-                }`}
-                onClick={() => setSelectedTimeframe(timeframe)}
               >
-                {timeframe}
+                {tf}
               </Button>
             ))}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className={themeStyles[theme].button}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </Button>
+            <ChartSettings
+              showVolume={showVolume}
+              showMA={showMA}
+              setShowVolume={setShowVolume}
+              setShowMA={setShowMA}
+              chartStyle={chartStyle}
+              setChartStyle={setChartStyle}
+            />
           </div>
 
-          {/* Chart - Made responsive height */}
+          <MarketStats data={stockData} theme={theme} />
+          <MarketDetails theme={theme} />
+
+          {/* Price chart */}
           <div className="h-64 sm:h-80 lg:h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stockData}>
+              <ComposedChart data={stockData}>
                 <defs>
                   <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                     <stop
@@ -296,49 +452,87 @@ const StockSimulator = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid
-                  stroke="#374151"
+                  stroke={theme === "dark" ? "#374151" : "#E5E7EB"}
                   opacity={0.2}
                   strokeDasharray="3 3"
                 />
                 <XAxis
                   dataKey="displayTime"
-                  tick={{ fill: "#9CA3AF", fontSize: 12 }}
-                  axisLine={{ stroke: "#374151" }}
-                  tickLine={{ stroke: "#374151" }}
-                  padding={{ left: 10, right: 10 }}
-                  interval="preserveStartEnd"
+                  tick={{
+                    fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
+                    fontSize: 12,
+                  }}
+                  axisLine={{
+                    stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                  }}
+                  tickLine={{
+                    stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                  }}
                 />
                 <YAxis
+                  yAxisId="price"
                   domain={["auto", "auto"]}
-                  tick={{ fill: "#9CA3AF", fontSize: 12 }}
-                  axisLine={{ stroke: "#374151" }}
-                  tickLine={{ stroke: "#374151" }}
+                  tick={{
+                    fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
+                    fontSize: 12,
+                  }}
+                  axisLine={{
+                    stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                  }}
+                  tickLine={{
+                    stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                  }}
                   tickFormatter={(value) => `$${value}`}
-                  width={60}
                 />
+                {showVolume && (
+                  <YAxis
+                    yAxisId="volume"
+                    orientation="right"
+                    tick={{
+                      fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
+                      fontSize: 12,
+                    }}
+                    axisLine={{
+                      stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                    }}
+                    tickLine={{
+                      stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                    }}
+                  />
+                )}
                 <Tooltip content={CustomTooltip} />
                 <Area
+                  yAxisId="price"
                   type="monotone"
                   dataKey="price"
                   stroke={trend === "up" ? "#10B981" : "#EF4444"}
-                  strokeWidth={3}
-                  fillOpacity={1}
                   fill="url(#colorPrice)"
+                  fillOpacity={1}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="price"
-                  stroke={trend === "up" ? "#10B981" : "#EF4444"}
-                  strokeWidth={3}
-                  dot={false}
-                  animateNewValues={true}
-                />
-              </LineChart>
+                {showMA && (
+                  <Line
+                    yAxisId="price"
+                    type="monotone"
+                    dataKey="ma20"
+                    stroke="#60A5FA"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                )}
+                {showVolume && (
+                  <Bar
+                    yAxisId="volume"
+                    dataKey="volume"
+                    fill={theme === "dark" ? "#374151" : "#E5E7EB"}
+                    opacity={0.3}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </motion.div>
 
-        {/* Metrics section - Made responsive */}
+        {/* Metrics section - with updated theme */}
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"
           initial={{ opacity: 0 }}
@@ -348,7 +542,7 @@ const StockSimulator = () => {
           {["Efficiency", "Innovation", "Sustainability"].map((metric) => (
             <motion.div
               key={metric}
-              className="bg-gray-900 rounded-xl p-4 sm:p-6 lg:p-8 text-center backdrop-blur-sm bg-opacity-90"
+              className={`${themeStyles[theme].card} rounded-xl p-4 sm:p-6 lg:p-8 text-center backdrop-blur-sm bg-opacity-90`}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >
