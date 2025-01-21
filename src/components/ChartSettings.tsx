@@ -43,47 +43,59 @@ const ChartSettings: React.FC<ChartSettingsProps> = ({
           <Settings className="w-4 h-4" />
         </Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="backdrop-blur-2xl bg-gray-900/70 border-gray-800">
         <SheetHeader>
-          <SheetTitle>Chart Settings</SheetTitle>
+          <SheetTitle className="text-white">Chart Settings</SheetTitle>
         </SheetHeader>
         <div className="space-y-6 py-4">
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">Indicators</h4>
+            <h4 className="text-sm font-medium text-gray-200">Indicators</h4>
             <div className="flex items-center justify-between">
-              <span>Show Volume</span>
+              <span className="text-gray-300">Show Volume</span>
               <Switch checked={showVolume} onCheckedChange={setShowVolume} />
             </div>
             <div className="flex items-center justify-between">
-              <span>Show Moving Average</span>
+              <span className="text-gray-300">Show Moving Average</span>
               <Switch checked={showMA} onCheckedChange={setShowMA} />
             </div>
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">Chart Style</h4>
+            <h4 className="text-sm font-medium text-gray-200">Chart Style</h4>
             <Select value={chartStyle} onValueChange={setChartStyle}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-gray-800/50 border-gray-700 text-gray-200">
                 <SelectValue placeholder="Select chart style" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="line">Line</SelectItem>
-                <SelectItem value="candle">Candlestick</SelectItem>
-                <SelectItem value="area">Area</SelectItem>
+              <SelectContent className="bg-gray-800 border-gray-700">
+                <SelectItem value="line" className="text-gray-200">
+                  Line
+                </SelectItem>
+                <SelectItem value="candle" className="text-gray-200">
+                  Candlestick
+                </SelectItem>
+                <SelectItem value="area" className="text-gray-200">
+                  Area
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">Time Zone</h4>
+            <h4 className="text-sm font-medium text-gray-200">Time Zone</h4>
             <Select defaultValue="local">
-              <SelectTrigger>
+              <SelectTrigger className="bg-gray-800/50 border-gray-700 text-gray-200">
                 <SelectValue placeholder="Select time zone" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="local">Local Time</SelectItem>
-                <SelectItem value="et">Eastern Time</SelectItem>
-                <SelectItem value="utc">UTC</SelectItem>
+              <SelectContent className="bg-gray-800 border-gray-700">
+                <SelectItem value="local" className="text-gray-200">
+                  Local Time
+                </SelectItem>
+                <SelectItem value="et" className="text-gray-200">
+                  Eastern Time
+                </SelectItem>
+                <SelectItem value="utc" className="text-gray-200">
+                  UTC
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

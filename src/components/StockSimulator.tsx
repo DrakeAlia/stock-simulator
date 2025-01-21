@@ -23,6 +23,10 @@ import {
 import ChartSettings from "./ChartSettings";
 import { Badge } from "./ui/badge";
 import MarketDetails from "./MarketDetails";
+import { HelpCircle } from "lucide-react";
+import TradingTutorial from "./TradingTutorial";
+import MetricCard from "./MetricCard";
+import MarketAlert from "./MarketAlert";
 
 interface StockDataPoint {
   timestamp: Date;
@@ -73,32 +77,44 @@ const MarketStats = ({
 }: {
   data: StockDataPoint[];
   theme: "dark" | "light";
-}) => (
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
-      <p className="text-gray-400 text-sm">Open</p>
-      <p className="text-lg font-bold">${data[0]?.price.toFixed(2)}</p>
+}) => {
+  // Get price history for sparklines
+  const priceHistory = data.map((d) => d.price);
+  const volumeHistory = data.map((d) => d.volume);
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <MetricCard
+        title="Open"
+        value={`$${data[0]?.price.toFixed(2)}`}
+        description="Opening price for the current trading session"
+        theme={theme}
+        sparklineData={priceHistory.slice(0, 10)}
+      />
+      <MetricCard
+        title="High"
+        value={`$${Math.max(...data.map((d) => d.price)).toFixed(2)}`}
+        description="Highest price reached during the session"
+        theme={theme}
+        sparklineData={priceHistory.slice(-10)}
+      />
+      <MetricCard
+        title="Low"
+        value={`$${Math.min(...data.map((d) => d.price)).toFixed(2)}`}
+        description="Lowest price reached during the session"
+        theme={theme}
+        sparklineData={priceHistory.slice(-10)}
+      />
+      <MetricCard
+        title="Volume"
+        value={volumeHistory[volumeHistory.length - 1]?.toLocaleString()}
+        description="Trading volume in the current session"
+        theme={theme}
+        sparklineData={volumeHistory.slice(-10)}
+      />
     </div>
-    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
-      <p className="text-gray-400 text-sm">High</p>
-      <p className="text-lg font-bold">
-        ${Math.max(...data.map((d) => d.price)).toFixed(2)}
-      </p>
-    </div>
-    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
-      <p className="text-gray-400 text-sm">Low</p>
-      <p className="text-lg font-bold">
-        ${Math.min(...data.map((d) => d.price)).toFixed(2)}
-      </p>
-    </div>
-    <div className={`${themeStyles[theme].card} p-4 rounded-lg`}>
-      <p className="text-gray-400 text-sm">Volume</p>
-      <p className="text-lg font-bold">
-        {(Math.random() * 1000000).toFixed(0)}
-      </p>
-    </div>
-  </div>
-);
+  );
+};
 
 const NewsTicker = ({ theme }: { theme: "dark" | "light" }) => (
   <div className={`${themeStyles[theme].card} p-2 mb-4 overflow-hidden`}>
@@ -127,6 +143,60 @@ const StockSimulator = () => {
   const [showVolume, setShowVolume] = useState(false);
   const [showMA, setShowMA] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !localStorage.getItem("hasSeenTutorial");
+    }
+    return false;
+  });
+
+  const [alert, setAlert] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: "info" | "warning" | "error";
+  }>({
+    show: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+ const alertTimeoutRef = useRef<number | null>(null);
+
+ // Then update the showAlert function
+ const showAlert = (
+   title: string,
+   message: string,
+   type: "info" | "warning" | "error"
+ ) => {
+   // Clear any existing timeout
+   if (alertTimeoutRef.current) {
+     clearTimeout(alertTimeoutRef.current);
+   }
+
+   setAlert({
+     show: true,
+     title,
+     message,
+     type,
+   });
+
+   // Set new timeout and store its reference
+   alertTimeoutRef.current = setTimeout(() => {
+     setAlert((prev) => ({ ...prev, show: false }));
+   }, 5000) as unknown as number;
+ };
+
+ // Update the cleanup effect
+ useEffect(() => {
+   return () => {
+     if (alertTimeoutRef.current) {
+       clearTimeout(alertTimeoutRef.current);
+     }
+   };
+ }, []);
 
   const [chartStyle, setChartStyle] = useState("area");
 
@@ -160,6 +230,19 @@ const StockSimulator = () => {
     let basePrice = lastPriceRef.current;
     const newData: StockDataPoint[] = [];
     const now = new Date();
+
+    const priceChange =
+      ((basePrice - lastPriceRef.current) / lastPriceRef.current) * 100;
+
+    if (Math.abs(priceChange) > 5) {
+      showAlert(
+        `Significant Price Movement`,
+        `Tesla stock has moved ${priceChange > 0 ? "up" : "down"} by ${Math.abs(
+          priceChange
+        ).toFixed(2)}%`,
+        priceChange > 0 ? "info" : "warning"
+      );
+    }
 
     // Configure data points and time intervals based on timeframe
     const config = {
@@ -420,6 +503,14 @@ const StockSimulator = () => {
                 <Moon className="w-4 h-4" />
               )}
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowTutorial(true)}
+              className={themeStyles[theme].button}
+            >
+              <HelpCircle className="w-4 h-4" />
+            </Button>
             <ChartSettings
               showVolume={showVolume}
               showMA={showMA}
@@ -533,6 +624,7 @@ const StockSimulator = () => {
         </motion.div>
 
         {/* Metrics section - with updated theme */}
+
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-8"
           initial={{ opacity: 0 }}
@@ -561,6 +653,31 @@ const StockSimulator = () => {
           ))}
         </motion.div>
       </motion.div>
+      <AnimatePresence>
+        {showTutorial && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <TradingTutorial
+              onComplete={() => {
+                setShowTutorial(false);
+                localStorage.setItem("hasSeenTutorial", "true");
+              }}
+              theme={theme}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <MarketAlert
+        show={alert.show}
+        onDismiss={() => setAlert((prev) => ({ ...prev, show: false }))}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+      />
     </div>
   );
 };
