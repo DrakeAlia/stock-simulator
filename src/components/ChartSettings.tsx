@@ -18,14 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ChartStyleType } from "./StockSimulator";
 
 interface ChartSettingsProps {
   showVolume: boolean;
   showMA: boolean;
   setShowVolume: (show: boolean) => void;
   setShowMA: (show: boolean) => void;
-  chartStyle: string;
-  setChartStyle: (style: string) => void;
+  chartStyle: ChartStyleType;
+  setChartStyle: (style: ChartStyleType) => void;
 }
 
 const ChartSettings: React.FC<ChartSettingsProps> = ({
