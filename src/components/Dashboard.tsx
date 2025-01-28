@@ -103,7 +103,7 @@ const useStockData = (initialPrice = 100) => {
 
     const interval = setInterval(generateData, 2000);
     return () => clearInterval(interval);
-  }, [currentPrice, data, timeframe]);
+  }, [currentPrice, data, timeframe, initialPrice]);
 
   return { data, currentPrice, trend, timeframe, setTimeframe };
 };

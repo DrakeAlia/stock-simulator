@@ -1,8 +1,7 @@
-// components/TradingTutorial.tsx
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import useMeasure from "react-use-measure";
-import { themeStyles } from "./StockSimulator";
+import { themeStyles } from "@/lib/theme";
 import { Settings, Zap, ChartLine, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 

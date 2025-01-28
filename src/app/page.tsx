@@ -21,7 +21,7 @@ export default function Home() {
             title: "Market Cap",
             value: 857.4,
             description: "Market Capitalization in Billions",
-            formatter: (value) => `$${value}B`,
+            formatter: (value: number) => `$${value}B`,
           },
         ]}
       />

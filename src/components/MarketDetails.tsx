@@ -1,5 +1,5 @@
 import React from "react";
-import { themeStyles } from "./StockSimulator"; // You'll need to export themeStyles from StockSimulator
+import { themeStyles } from "@/lib/theme";
 
 interface MarketDetailsProps {
   theme: "dark" | "light";
