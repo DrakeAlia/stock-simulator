@@ -3,27 +3,33 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { themeStyles } from "@/lib/theme";
 import {
-  Line,
+  // Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
   Area,
-  Bar,
+  // Bar,
   ComposedChart,
 } from "recharts";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 // import { TooltipProps } from "recharts";
 // import {
 //   NameType,
 //   ValueType,
 // } from "recharts/types/component/DefaultTooltipContent";
+// import ChartSettings from "./ChartSettings";
+// import MarketDetails from "./MarketDetails";
 import ChartSkeleton from "@/components/ChartSkeleton";
-import ChartSettings from "./ChartSettings";
-import MarketDetails from "./MarketDetails";
 import MarketAlert from "./MarketAlert";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface StockSimulatorProps {
   symbol: string;
@@ -70,7 +76,6 @@ interface TooltipProps {
     };
   }>;
 }
-
 
 const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
   if (active && payload?.[0]) {
@@ -119,7 +124,6 @@ const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
   return null;
 };
 
-
 const formatDateByTimeframe = (date: Date, timeframe: TimeFrame): string => {
   switch (timeframe) {
     case "1D":
@@ -153,30 +157,27 @@ const formatDateByTimeframe = (date: Date, timeframe: TimeFrame): string => {
   }
 };
 
-
 const StockSimulator: React.FC<StockSimulatorProps> = ({
   symbol,
   companyName,
   description,
   initialPrice = 100,
   defaultTimeframe = "1D",
-  defaultChartType = "area",
   theme: initialTheme = "dark",
   onTimeframeChange,
   onThemeChange,
 }) => {
+  // const [showVolume, setShowVolume] = useState(false);
+  // const [showMA, setShowMA] = useState(false);
+  const [volume] = useState(Math.floor(Math.random() * 1000000));
   const [stockData, setStockData] = useState<StockDataPoint[]>([]);
   const [currentPrice, setCurrentPrice] = useState(initialPrice);
   const [trend, setTrend] = useState<"up" | "down">("up");
-  const [showVolume, setShowVolume] = useState(false);
-  const [showMA, setShowMA] = useState(false);
   const [theme, setTheme] = useState(initialTheme);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<TimeFrame>(defaultTimeframe);
-  const [chartStyle, setChartStyle] =
-    useState<ChartStyleType>(defaultChartType);
   const [alert, setAlert] = useState({
     show: false,
     title: "",
@@ -187,187 +188,216 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
   const currentPriceRef = useRef(initialPrice);
   const timeframeRef = useRef(defaultTimeframe);
 
-// Configure time intervals based on timeframe
- const generateDataPoints = (
-   timeframe: TimeFrame,
-   currentPrice: number,
-   now: Date = new Date()
- ): StockDataPoint[] => {
-   const config = {
-     "1D": {
-       points: 24,
-       getDate: (i: number) => {
-         const date = new Date(now);
-         date.setHours(date.getHours() - (24 - i));
-         return date;
-       },
-     },
-     "1W": {
-       points: 7,
-       getDate: (i: number) => {
-         const date = new Date(now);
-         date.setDate(date.getDate() - (7 - i));
-         return date;
-       },
-     },
-     "1M": {
-       points: 30,
-       getDate: (i: number) => {
-         const date = new Date(now);
-         date.setDate(date.getDate() - (30 - i));
-         return date;
-       },
-     },
-     "3M": {
-       points: 90,
-       getDate: (i: number) => {
-         const date = new Date(now);
-         date.setDate(date.getDate() - (90 - i));
-         return date;
-       },
-     },
-     "1Y": {
-       points: 365,
-       getDate: (i: number) => {
-         const date = new Date(now);
-         date.setDate(date.getDate() - (365 - i));
-         return date;
-       },
-     },
-     "5Y": {
-       points: 60,
-       getDate: (i: number) => {
-         const date = new Date(now);
-         date.setMonth(date.getMonth() - (60 - i));
-         return date;
-       },
-     },
-   }[timeframe];
+  // Configure time intervals based on timeframe
+  const generateDataPoints = (
+    timeframe: TimeFrame,
+    currentPrice: number,
+    now: Date = new Date()
+  ): StockDataPoint[] => {
+    const config = {
+      "1D": {
+        points: 24,
+        getDate: (i: number) => {
+          const date = new Date(now);
+          date.setHours(date.getHours() - (24 - i));
+          return date;
+        },
+      },
+      "1W": {
+        points: 7,
+        getDate: (i: number) => {
+          const date = new Date(now);
+          date.setDate(date.getDate() - (7 - i));
+          return date;
+        },
+      },
+      "1M": {
+        points: 30,
+        getDate: (i: number) => {
+          const date = new Date(now);
+          date.setDate(date.getDate() - (30 - i));
+          return date;
+        },
+      },
+      "3M": {
+        points: 90,
+        getDate: (i: number) => {
+          const date = new Date(now);
+          date.setDate(date.getDate() - (90 - i));
+          return date;
+        },
+      },
+      "1Y": {
+        points: 365,
+        getDate: (i: number) => {
+          const date = new Date(now);
+          date.setDate(date.getDate() - (365 - i));
+          return date;
+        },
+      },
+      "5Y": {
+        points: 60,
+        getDate: (i: number) => {
+          const date = new Date(now);
+          date.setMonth(date.getMonth() - (60 - i));
+          return date;
+        },
+      },
+    }[timeframe];
 
-   const newData: StockDataPoint[] = [];
-   let basePrice = currentPrice;
+    const newData: StockDataPoint[] = [];
+    let basePrice = currentPrice;
 
-   for (let i = 0; i < config.points; i++) {
-     const timestamp = config.getDate(i);
-     const volatility = Math.random() * 4 - 2;
-     basePrice = Math.max(0, basePrice + volatility);
+    for (let i = 0; i < config.points; i++) {
+      const timestamp = config.getDate(i);
+      const volatility = Math.random() * 4 - 2;
+      basePrice = Math.max(0, basePrice + volatility);
 
-     newData.push({
-       timestamp,
-       displayTime: formatDateByTimeframe(timestamp, timeframe),
-       price: Number(basePrice.toFixed(2)),
-       volume: Math.floor(Math.random() * 1000000),
-       change: basePrice - currentPrice,
-       changePercent: ((basePrice - currentPrice) / currentPrice) * 100,
-     });
-   }
+      newData.push({
+        timestamp,
+        displayTime: formatDateByTimeframe(timestamp, timeframe),
+        price: Number(basePrice.toFixed(2)),
+        volume: Math.floor(Math.random() * 1000000),
+        change: basePrice - currentPrice,
+        changePercent: ((basePrice - currentPrice) / currentPrice) * 100,
+      });
+    }
 
-   return newData;
- };
-
-const generateSimulatedData = useCallback(
-  (timeframe: TimeFrame, basePrice: number) => {
-    setIsLoading(true);
-    const newData = generateDataPoints(timeframe, basePrice);
-    const lastPrice = newData[newData.length - 1].price;
-
-    // Update both state and ref
-    setCurrentPrice(lastPrice);
-    currentPriceRef.current = lastPrice;
-
-    setStockData(newData);
-    setTrend(lastPrice >= basePrice ? "up" : "down");
-    setIsLoading(false);
-  },
-  []
-);
-
-useEffect(() => {
-  const updateData = () => {
-    generateSimulatedData(timeframeRef.current, currentPriceRef.current);
+    return newData;
   };
 
-  // Initial data generation
-  updateData();
+  const generateSimulatedData = useCallback(
+    (timeframe: TimeFrame, basePrice: number) => {
+      setIsLoading(true);
+      const newData = generateDataPoints(timeframe, basePrice);
+      const lastPrice = newData[newData.length - 1].price;
 
-  // Set up interval
-  intervalRef.current = setInterval(updateData, 2000);
+      setCurrentPrice(lastPrice);
+      currentPriceRef.current = lastPrice;
 
-  return () => {
+      setStockData(newData);
+      setTrend(lastPrice >= basePrice ? "up" : "down");
+      setIsLoading(false);
+    },
+    []
+  );
+
+  useEffect(() => {
+    const updateData = () => {
+      generateSimulatedData(timeframeRef.current, currentPriceRef.current);
+    };
+
+    updateData();
+    intervalRef.current = setInterval(updateData, 2000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [generateSimulatedData]); // Add generateSimulatedData to dependency array
+
+  const handleTimeframeChange = (newTimeframe: TimeFrame) => {
+    setIsLoading(true);
+    setSelectedTimeframe(newTimeframe);
+    timeframeRef.current = newTimeframe; // Update ref
+
+    // Clear existing interval
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
+
+    // Generate new data with a slight delay
+    setTimeout(() => {
+      generateSimulatedData(newTimeframe, currentPriceRef.current);
+
+      // Start new interval
+      intervalRef.current = setInterval(() => {
+        generateSimulatedData(timeframeRef.current, currentPriceRef.current);
+      }, 2000);
+    }, 300);
+
+    onTimeframeChange?.(newTimeframe);
   };
-}, []);
-
-const handleTimeframeChange = (newTimeframe: TimeFrame) => {
-  setIsLoading(true);
-  setSelectedTimeframe(newTimeframe);
-  timeframeRef.current = newTimeframe; // Update ref
-
-  // Clear existing interval
-  if (intervalRef.current) {
-    clearInterval(intervalRef.current);
-  }
-
-  // Generate new data with a slight delay
-  setTimeout(() => {
-    generateSimulatedData(newTimeframe, currentPriceRef.current);
-
-    // Start new interval
-    intervalRef.current = setInterval(() => {
-      generateSimulatedData(timeframeRef.current, currentPriceRef.current);
-    }, 2000);
-  }, 300);
-
-  onTimeframeChange?.(newTimeframe);
-};
 
   const handleThemeChange = (newTheme: "dark" | "light") => {
     setTheme(newTheme);
-    onThemeChange?.(newTheme);
+    if (onThemeChange) {
+      onThemeChange(newTheme);
+    }
   };
 
   return (
     <div
-      className={`w-full min-h-screen ${themeStyles[theme].background} ${themeStyles[theme].text} p-4`}
+      className={`w-full min-h-screen ${themeStyles[theme].background} ${themeStyles[theme].text} p-2 sm:p-4`}
     >
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-5xl font-bold mb-2">{symbol}</h1>
-          <div className="flex flex-col space-y-1">
-            <span className="text-gray-400">{companyName}</span>
-            {description && (
-              <span className="text-sm text-gray-500">{description}</span>
-            )}
+        {/* 3. Update the header section */}
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              {/* Make heading text responsive */}
+              <h1 className="text-3xl sm:text-5xl font-bold mb-1">{symbol}</h1>
+              <span className="text-gray-400 text-sm sm:text-base">
+                {companyName}
+              </span>
+            </div>
+            <div className="mt-2 sm:mt-0 flex flex-col sm:items-end">
+              <span className="text-xl sm:text-2xl font-bold">
+                ${currentPrice.toFixed(2)}
+              </span>
+              <span
+                className={`text-base sm:text-lg ${
+                  trend === "up" ? "text-green-500" : "text-red-500"
+                }`}
+              >
+                {trend === "up" ? "+" : "-"}$
+                {Math.abs(stockData[stockData.length - 1]?.change || 0).toFixed(
+                  2
+                )}
+                (
+                {Math.abs(
+                  stockData[stockData.length - 1]?.changePercent || 0
+                ).toFixed(2)}
+                %)
+              </span>
+            </div>
           </div>
-          <span className="text-2xl font-bold mt-4 block">
-            ${currentPrice.toFixed(2)}
-          </span>
-          <div className="flex items-center mt-2">
-            <span
-              className={`text-lg ${
-                trend === "up" ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {trend === "up" ? "+" : "-"}$
-              {Math.abs(stockData[stockData.length - 1]?.change || 0).toFixed(
-                2
-              )}
-              (
-              {Math.abs(
-                stockData[stockData.length - 1]?.changePercent || 0
-              ).toFixed(2)}
-              %)
+          {description && (
+            <span className="text-xs sm:text-sm text-gray-500 mt-2 block">
+              {description}
             </span>
-          </div>
+          )}
         </div>
 
-        {/* Chart Section */}
-        <div className={`${themeStyles[theme].card} rounded-xl p-6 mb-6`}>
-          {/* Chart Controls */}
-          <div className="flex justify-between items-center mb-6">
+        {/* 4. Update the chart card section */}
+        <div
+          className={`${themeStyles[theme].card} rounded-xl p-3 sm:p-6 mb-4 sm:mb-6`}
+        >
+          {/* 5. Add mobile timeframe dropdown */}
+          <div className="sm:hidden mb-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  {selectedTimeframe}
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-full">
+                {["1D", "1W", "1M", "3M", "1Y", "5Y"].map((tf) => (
+                  <DropdownMenuItem
+                    key={tf}
+                    onClick={() => handleTimeframeChange(tf as TimeFrame)}
+                  >
+                    {tf}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* 6. Update desktop timeframe buttons to hide on mobile */}
+          <div className="hidden sm:flex justify-between items-center mb-6">
             <div className="flex space-x-6">
               {["1D", "1W", "1M", "3M", "1Y", "5Y"].map((tf) => (
                 <button
@@ -383,62 +413,67 @@ const handleTimeframeChange = (newTimeframe: TimeFrame) => {
                 </button>
               ))}
             </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  handleThemeChange(theme === "dark" ? "light" : "dark")
-                }
-                className="hover:bg-gray-800/50"
-              >
-                {theme === "dark" ? (
-                  <Sun className="w-4 h-4" />
-                ) : (
-                  <Moon className="w-4 h-4" />
-                )}
-              </Button>
-              <ChartSettings
-                showVolume={showVolume}
-                showMA={showMA}
-                setShowVolume={setShowVolume}
-                setShowMA={setShowMA}
-                chartStyle={chartStyle}
-                setChartStyle={setChartStyle}
-              />
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                handleThemeChange(theme === "dark" ? "light" : "dark")
+              }
+              className="hover:bg-gray-800/50"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </Button>
           </div>
 
-          <MarketDetails
-            theme={theme}
-            currentPrice={currentPrice}
-            volume={stockData[stockData.length - 1]?.volume || 0}
-          />
+          {/* 7. Update MarketDetails component to be responsive */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4 mb-4 sm:mb-6">
+            <MetricCard
+              title="24h Volume"
+              value={volume.toLocaleString(undefined, {
+                style: "currency",
+                currency: "USD",
+                notation: "compact",
+                maximumFractionDigits: 1,
+              })}
+              theme={theme}
+            />
+            <MetricCard title="Market Cap" value="$724.5B" theme={theme} />
+            <MetricCard title="P/E Ratio" value="70.5" theme={theme} />
+            <MetricCard
+              title="52W Range"
+              value="$101.81 - $299.29"
+              theme={theme}
+            />
+          </div>
 
           {/* Chart */}
           {isLoading ? (
             <ChartSkeleton theme={theme} />
           ) : (
-            <div className="h-96">
+            <div className="h-64 sm:h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={stockData}>
+                <ComposedChart
+                  data={stockData}
+                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                >
                   <CartesianGrid
                     stroke={theme === "dark" ? "#374151" : "#E5E7EB"}
                     opacity={0.2}
                   />
                   <XAxis
                     dataKey="displayTime"
-                    tick={{ fill: theme === "dark" ? "#9CA3AF" : "#4B5563" }}
-                    axisLine={{
-                      stroke: theme === "dark" ? "#374151" : "#E5E7EB",
-                    }}
-                    tickLine={{
-                      stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                    tick={{
+                      fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
+                      fontSize: "0.75rem",
                     }}
                     interval="preserveStartEnd"
-                    minTickGap={30}
-                    angle={selectedTimeframe === "1D" ? 0 : -45}
-                    height={60}
+                    minTickGap={20}
+                    angle={-45}
+                    height={50}
                     dy={20}
                   />
                   <YAxis
@@ -470,22 +505,6 @@ const handleTimeframeChange = (newTimeframe: TimeFrame) => {
                     fill={trend === "up" ? "#10B981" : "#EF4444"}
                     fillOpacity={0.1}
                   />
-                  {showMA && (
-                    <Line
-                      type="monotone"
-                      dataKey="ma20"
-                      stroke="#60A5FA"
-                      dot={false}
-                      strokeWidth={2}
-                    />
-                  )}
-                  {showVolume && (
-                    <Bar
-                      dataKey="volume"
-                      fill={theme === "dark" ? "#374151" : "#E5E7EB"}
-                      opacity={0.3}
-                    />
-                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -503,5 +522,22 @@ const handleTimeframeChange = (newTimeframe: TimeFrame) => {
     </div>
   );
 };
+
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  theme: "dark" | "light";
+}
+
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, theme }) => (
+  <div
+    className={`p-2 sm:p-4 rounded-lg ${
+      theme === "dark" ? "bg-gray-800/50" : "bg-gray-100"
+    }`}
+  >
+    <h3 className="text-xs sm:text-sm text-gray-400 mb-1">{title}</h3>
+    <p className="text-sm sm:text-base font-semibold">{value}</p>
+  </div>
+);
 
 export default StockSimulator;
