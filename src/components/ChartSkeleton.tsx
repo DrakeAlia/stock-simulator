@@ -11,8 +11,7 @@ const ChartSkeleton: React.FC<ChartSkeletonProps> = ({ theme }) => {
   return (
     <div className="space-y-4">
       {/* Chart Area */}
-      <div className={`h-96 ${bgColor} ${animatePulse} rounded-lg`} />
-
+      <div className={`h-64 sm:h-96 ${bgColor} ${animatePulse} rounded-lg`} />
       {/* Time Labels */}
       <div className="flex justify-between mt-4">
         {[...Array(6)].map((_, i) => (
@@ -22,7 +21,6 @@ const ChartSkeleton: React.FC<ChartSkeletonProps> = ({ theme }) => {
           />
         ))}
       </div>
-
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
         {[...Array(4)].map((_, i) => (

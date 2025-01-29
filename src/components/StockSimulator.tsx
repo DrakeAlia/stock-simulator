@@ -3,25 +3,16 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { themeStyles } from "@/lib/theme";
 import {
-  // Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
   Area,
-  // Bar,
   ComposedChart,
 } from "recharts";
 import { Sun, Moon, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// import { TooltipProps } from "recharts";
-// import {
-//   NameType,
-//   ValueType,
-// } from "recharts/types/component/DefaultTooltipContent";
-// import ChartSettings from "./ChartSettings";
-// import MarketDetails from "./MarketDetails";
 import ChartSkeleton from "@/components/ChartSkeleton";
 import MarketAlert from "./MarketAlert";
 import {
@@ -167,8 +158,6 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
   onTimeframeChange,
   onThemeChange,
 }) => {
-  // const [showVolume, setShowVolume] = useState(false);
-  // const [showMA, setShowMA] = useState(false);
   const [volume] = useState(Math.floor(Math.random() * 1000000));
   const [stockData, setStockData] = useState<StockDataPoint[]>([]);
   const [currentPrice, setCurrentPrice] = useState(initialPrice);
@@ -295,12 +284,12 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, [generateSimulatedData]); // Add generateSimulatedData to dependency array
+  }, [generateSimulatedData]);
 
   const handleTimeframeChange = (newTimeframe: TimeFrame) => {
     setIsLoading(true);
     setSelectedTimeframe(newTimeframe);
-    timeframeRef.current = newTimeframe; // Update ref
+    timeframeRef.current = newTimeframe;
 
     // Clear existing interval
     if (intervalRef.current) {
@@ -332,7 +321,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
       className={`w-full min-h-screen ${themeStyles[theme].background} ${themeStyles[theme].text} p-2 sm:p-4`}
     >
       <div className="max-w-7xl mx-auto">
-        {/* 3. Update the header section */}
+        {/* header section */}
         <div className="mb-4 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -370,24 +359,28 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
           )}
         </div>
 
-        {/* 4. Update the chart card section */}
+        {/* chart card section */}
         <div
           className={`${themeStyles[theme].card} rounded-xl p-3 sm:p-6 mb-4 sm:mb-6`}
         >
-          {/* 5. Add mobile timeframe dropdown */}
+          {/* mobile timeframe dropdown */}
           <div className="sm:hidden mb-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full justify-between">
-                  {selectedTimeframe}
-                  <ChevronDown className="h-4 w-4 ml-2" />
+                <Button
+                  variant="outline"
+                  className="w-full justify-between h-9 px-3 text-sm font-medium bg-gray-800/50 border-gray-700 hover:bg-gray-700/50"
+                >
+                  <span className="text-gray-100">{selectedTimeframe}</span>
+                  <ChevronDown className="h-4 w-4 ml-2 text-gray-400" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full">
+              <DropdownMenuContent className="w-full bg-gray-800 border-gray-700">
                 {["1D", "1W", "1M", "3M", "1Y", "5Y"].map((tf) => (
                   <DropdownMenuItem
                     key={tf}
                     onClick={() => handleTimeframeChange(tf as TimeFrame)}
+                    className="text-gray-100 hover:bg-gray-700/50 hover:text-white focus:bg-gray-700/50 focus:text-white"
                   >
                     {tf}
                   </DropdownMenuItem>
@@ -395,8 +388,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-          {/* 6. Update desktop timeframe buttons to hide on mobile */}
+          {/* desktop timeframe buttons to hide on mobile */}
           <div className="hidden sm:flex justify-between items-center mb-6">
             <div className="flex space-x-6">
               {["1D", "1W", "1M", "3M", "1Y", "5Y"].map((tf) => (
@@ -429,7 +421,23 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
             </Button>
           </div>
 
-          {/* 7. Update MarketDetails component to be responsive */}
+          <div className="sm:hidden mt-4 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                handleThemeChange(theme === "dark" ? "light" : "dark")
+              }
+              className="hover:bg-gray-800/50"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+          {/* MarketDetails component */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4 mb-4 sm:mb-6">
             <MetricCard
               title="24h Volume"
@@ -449,7 +457,6 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
               theme={theme}
             />
           </div>
-
           {/* Chart */}
           {isLoading ? (
             <ChartSkeleton theme={theme} />
@@ -458,7 +465,12 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                   data={stockData}
-                  margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                  margin={{
+                    top: 5,
+                    right: 10,
+                    left: 5,
+                    bottom: 20,
+                  }}
                 >
                   <CartesianGrid
                     stroke={theme === "dark" ? "#374151" : "#E5E7EB"}
@@ -509,7 +521,6 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
               </ResponsiveContainer>
             </div>
           )}
-
           <MarketAlert
             show={alert.show}
             onDismiss={() => setAlert((prev) => ({ ...prev, show: false }))}
