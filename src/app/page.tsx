@@ -10,9 +10,9 @@ export default function Home() {
   return (
     <div>
       <StockSimulator
-        symbol="TSLA"
-        companyName="Tesla, Inc."
-        description="Electric vehicles and clean energy company"
+        symbol="ECFM"
+        companyName="EcoFuture Motors"
+        description="Electric vehicles and sustainable transportation solutions"
         initialPrice={250.5}
         theme="dark"
         defaultShowTutorial={true}
