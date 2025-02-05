@@ -128,13 +128,9 @@ const formatDateByTimeframe = (date: Date, timeframe: TimeFrame): string => {
       return date.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
       });
     case "1W":
-      return date.toLocaleDateString([], {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
     case "1M":
       return date.toLocaleDateString([], {
         month: "short",
@@ -142,14 +138,11 @@ const formatDateByTimeframe = (date: Date, timeframe: TimeFrame): string => {
       });
     case "3M":
     case "1Y":
-      return date.toLocaleDateString([], {
+      return `${date.toLocaleDateString([], {
         month: "short",
-        year: "numeric",
-      });
+      })} ${date.getFullYear()}`;
     case "5Y":
-      return date.toLocaleDateString([], {
-        year: "numeric",
-      });
+      return date.getFullYear().toString();
     default:
       return date.toLocaleString();
   }
@@ -183,16 +176,34 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
 
   const currentPriceRef = useRef(initialPrice);
   const timeframeRef = useRef(defaultTimeframe);
-  // const lastUpdateRef = useRef(new Date());
 
   const generateNewPrice = useCallback(
-    (currentPrice: number): number => {
-      const baseVolatility = 0.0005;
+    (currentPrice: number, timeframe: TimeFrame): number => {
+      const volatilityMap = {
+        "1D": 0.0002,
+        "1W": 0.0005,
+        "1M": 0.001,
+        "3M": 0.002,
+        "1Y": 0.003,
+        "5Y": 0.005,
+      };
+
+      const baseVolatility = volatilityMap[timeframe];
       const randomFactor = Math.random() * 2 - 1;
       const change = currentPrice * baseVolatility * randomFactor;
 
+      // Adjust mean reversion based on timeframe
+      const meanReversionMap = {
+        "1D": 0.001,
+        "1W": 0.002,
+        "1M": 0.005,
+        "3M": 0.01,
+        "1Y": 0.02,
+        "5Y": 0.03,
+      };
+
       const meanPrice = initialPrice;
-      const meanReversionFactor = 0.01;
+      const meanReversionFactor = meanReversionMap[timeframe];
       const meanReversion = (meanPrice - currentPrice) * meanReversionFactor;
 
       const newPrice = currentPrice + change + meanReversion;
@@ -201,21 +212,31 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
     [initialPrice]
   );
 
-  // Configure time intervals based on timeframe
   const generateDataPoints = useCallback(
     (
       timeframe: TimeFrame,
       currentPrice: number,
       now: Date = new Date()
     ): StockDataPoint[] => {
-      const FIXED_POINTS = 30;
+      const pointsMap = {
+        "1D": { points: 24, interval: 60 }, // Every hour
+        "1W": { points: 7, interval: 24 * 60 }, // Daily
+        "1M": { points: 30, interval: 24 * 60 }, // Daily
+        "3M": { points: 90, interval: 24 * 60 }, // Daily
+        "1Y": { points: 365, interval: 24 * 60 }, // Daily
+        "5Y": { points: 60, interval: 30 * 24 * 60 }, // Monthly
+      };
+
+      const { points, interval } = pointsMap[timeframe];
       const newData: StockDataPoint[] = [];
       let basePrice = currentPrice;
 
-      for (let i = 0; i < FIXED_POINTS; i++) {
+      for (let i = points - 1; i >= 0; i--) {
         const timestamp = new Date(now);
-        timestamp.setMinutes(timestamp.getMinutes() - (FIXED_POINTS - i));
-        basePrice = generateNewPrice(basePrice);
+        timestamp.setMinutes(timestamp.getMinutes() - i * interval);
+
+        // Generate more realistic price movements
+        basePrice = generateNewPrice(basePrice, timeframe);
 
         newData.push({
           timestamp,
@@ -257,10 +278,13 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
     setStockData(initialData);
     setIsLoading(false);
 
-    // Update every minute
+    // Update more frequently (every 10 seconds instead of every minute)
     const interval = setInterval(() => {
       const now = new Date();
-      const newPrice = generateNewPrice(currentPriceRef.current);
+      const newPrice = generateNewPrice(
+        currentPriceRef.current,
+        timeframeRef.current
+      );
       currentPriceRef.current = newPrice;
 
       setCurrentPrice(newPrice);
@@ -283,7 +307,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
         );
         return newData;
       });
-    }, 60000); // 60000ms = 1 minute
+    }, 1000);
 
     intervalRef.current = interval;
 
@@ -308,10 +332,12 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
     setTimeout(() => {
       generateSimulatedData(newTimeframe, currentPriceRef.current);
 
-      // Start new interval with 1-minute updates (same as main interval)
+      // Adjust update frequency based on timeframe
+      const updateInterval = newTimeframe === "1D" ? 1000 : 5000;
+
       intervalRef.current = setInterval(() => {
         generateSimulatedData(timeframeRef.current, currentPriceRef.current);
-      }, 60000); // Changed from 2000 to 60000 to match the main interval
+      }, updateInterval);
     }, 300);
 
     onTimeframeChange?.(newTimeframe);
@@ -482,30 +508,41 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
                 >
                   <CartesianGrid
                     stroke={theme === "dark" ? "#374151" : "#E5E7EB"}
-                    opacity={0.2}
+                    opacity={0.1} // Reduce grid opacity
+                    vertical={true}
+                    horizontal={true}
+                    strokeDasharray="3 3" // Add dashed lines like TradingView
                   />
+
                   <XAxis
                     dataKey="displayTime"
                     tick={{
                       fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
-                      fontSize: "0.75rem",
+                      fontSize: "0.7rem",
                     }}
                     interval="preserveStartEnd"
-                    minTickGap={20}
-                    angle={-45}
-                    height={50}
-                    dy={20}
-                  />
-                  <YAxis
-                    domain={["auto", "auto"]}
-                    tick={{ fill: theme === "dark" ? "#9CA3AF" : "#4B5563" }}
+                    minTickGap={30}
+                    height={30}
+                    dy={10}
                     axisLine={{
                       stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                      opacity: 0.2,
                     }}
-                    tickLine={{
+                  />
+
+                  <YAxis
+                    domain={["auto", "auto"]}
+                    tick={{
+                      fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
+                      fontSize: "0.7rem",
+                    }}
+                    axisLine={{
                       stroke: theme === "dark" ? "#374151" : "#E5E7EB",
+                      opacity: 0.2,
                     }}
-                    tickFormatter={(value) => `$${value}`}
+                    tickLine={false}
+                    tickCount={8}
+                    tickFormatter={(value) => `$${value.toFixed(2)}`}
                   />
                   <Tooltip
                     content={({ active, payload }) => (
@@ -522,8 +559,12 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
                     type="monotone"
                     dataKey="price"
                     stroke={trend === "up" ? "#10B981" : "#EF4444"}
+                    strokeWidth={2}
                     fill={trend === "up" ? "#10B981" : "#EF4444"}
                     fillOpacity={0.1}
+                    connectNulls
+                    dot={false}
+                    isAnimationActive={false}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
