@@ -68,6 +68,13 @@ interface TooltipProps {
   }>;
 }
 
+interface AlertState {
+  show: boolean;
+  title: string;
+  message: string;
+  type: "info" | "warning" | "error";
+}
+
 const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
   if (active && payload?.[0]) {
     const data = payload[0].payload;
@@ -167,99 +174,69 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<TimeFrame>(defaultTimeframe);
-  const [alert, setAlert] = useState({
+  const [alert, setAlert] = useState<AlertState>({
     show: false,
     title: "",
     message: "",
-    type: "info" as const,
+    type: "info",
   });
 
   const currentPriceRef = useRef(initialPrice);
   const timeframeRef = useRef(defaultTimeframe);
+  // const lastUpdateRef = useRef(new Date());
+
+  const generateNewPrice = useCallback(
+    (currentPrice: number): number => {
+      const baseVolatility = 0.0005;
+      const randomFactor = Math.random() * 2 - 1;
+      const change = currentPrice * baseVolatility * randomFactor;
+
+      const meanPrice = initialPrice;
+      const meanReversionFactor = 0.01;
+      const meanReversion = (meanPrice - currentPrice) * meanReversionFactor;
+
+      const newPrice = currentPrice + change + meanReversion;
+      return Math.max(0, Number(newPrice.toFixed(2)));
+    },
+    [initialPrice]
+  );
 
   // Configure time intervals based on timeframe
-  const generateDataPoints = (
-    timeframe: TimeFrame,
-    currentPrice: number,
-    now: Date = new Date()
-  ): StockDataPoint[] => {
-    const config = {
-      "1D": {
-        points: 24,
-        getDate: (i: number) => {
-          const date = new Date(now);
-          date.setHours(date.getHours() - (24 - i));
-          return date;
-        },
-      },
-      "1W": {
-        points: 7,
-        getDate: (i: number) => {
-          const date = new Date(now);
-          date.setDate(date.getDate() - (7 - i));
-          return date;
-        },
-      },
-      "1M": {
-        points: 30,
-        getDate: (i: number) => {
-          const date = new Date(now);
-          date.setDate(date.getDate() - (30 - i));
-          return date;
-        },
-      },
-      "3M": {
-        points: 90,
-        getDate: (i: number) => {
-          const date = new Date(now);
-          date.setDate(date.getDate() - (90 - i));
-          return date;
-        },
-      },
-      "1Y": {
-        points: 365,
-        getDate: (i: number) => {
-          const date = new Date(now);
-          date.setDate(date.getDate() - (365 - i));
-          return date;
-        },
-      },
-      "5Y": {
-        points: 60,
-        getDate: (i: number) => {
-          const date = new Date(now);
-          date.setMonth(date.getMonth() - (60 - i));
-          return date;
-        },
-      },
-    }[timeframe];
+  const generateDataPoints = useCallback(
+    (
+      timeframe: TimeFrame,
+      currentPrice: number,
+      now: Date = new Date()
+    ): StockDataPoint[] => {
+      const FIXED_POINTS = 30;
+      const newData: StockDataPoint[] = [];
+      let basePrice = currentPrice;
 
-    const newData: StockDataPoint[] = [];
-    let basePrice = currentPrice;
+      for (let i = 0; i < FIXED_POINTS; i++) {
+        const timestamp = new Date(now);
+        timestamp.setMinutes(timestamp.getMinutes() - (FIXED_POINTS - i));
+        basePrice = generateNewPrice(basePrice);
 
-    for (let i = 0; i < config.points; i++) {
-      const timestamp = config.getDate(i);
-      const volatility = Math.random() * 4 - 2;
-      basePrice = Math.max(0, basePrice + volatility);
+        newData.push({
+          timestamp,
+          displayTime: formatDateByTimeframe(timestamp, timeframe),
+          price: basePrice,
+          volume: Math.floor(Math.random() * 1000000),
+          change: basePrice - currentPrice,
+          changePercent: ((basePrice - currentPrice) / currentPrice) * 100,
+        });
+      }
 
-      newData.push({
-        timestamp,
-        displayTime: formatDateByTimeframe(timestamp, timeframe),
-        price: Number(basePrice.toFixed(2)),
-        volume: Math.floor(Math.random() * 1000000),
-        change: basePrice - currentPrice,
-        changePercent: ((basePrice - currentPrice) / currentPrice) * 100,
-      });
-    }
-
-    return newData;
-  };
+      return newData;
+    },
+    [generateNewPrice]
+  );
 
   const generateSimulatedData = useCallback(
     (timeframe: TimeFrame, basePrice: number) => {
       setIsLoading(true);
       const newData = generateDataPoints(timeframe, basePrice);
-      const lastPrice = newData[newData.length - 1].price;
+      const lastPrice = newData[newData.length - 1]?.price ?? basePrice;
 
       setCurrentPrice(lastPrice);
       currentPriceRef.current = lastPrice;
@@ -268,23 +245,54 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
       setTrend(lastPrice >= basePrice ? "up" : "down");
       setIsLoading(false);
     },
-    []
+    [generateDataPoints]
   );
 
   useEffect(() => {
-    const updateData = () => {
-      generateSimulatedData(timeframeRef.current, currentPriceRef.current);
-    };
+    // Initial data generation
+    const initialData = generateDataPoints(
+      timeframeRef.current,
+      currentPriceRef.current
+    );
+    setStockData(initialData);
+    setIsLoading(false);
 
-    updateData();
-    intervalRef.current = setInterval(updateData, 2000);
+    // Update every minute
+    const interval = setInterval(() => {
+      const now = new Date();
+      const newPrice = generateNewPrice(currentPriceRef.current);
+      currentPriceRef.current = newPrice;
+
+      setCurrentPrice(newPrice);
+      setStockData((prevData) => {
+        const newData = [
+          ...prevData.slice(1),
+          {
+            timestamp: now,
+            displayTime: formatDateByTimeframe(now, timeframeRef.current),
+            price: newPrice,
+            volume: Math.floor(Math.random() * 1000000),
+            change: newPrice - prevData[0].price,
+            changePercent:
+              ((newPrice - prevData[0].price) / prevData[0].price) * 100,
+          },
+        ];
+
+        setTrend(
+          newPrice >= prevData[prevData.length - 1].price ? "up" : "down"
+        );
+        return newData;
+      });
+    }, 60000); // 60000ms = 1 minute
+
+    intervalRef.current = interval;
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (interval) {
+        clearInterval(interval);
       }
     };
-  }, [generateSimulatedData]);
+  }, [generateDataPoints, generateNewPrice]);
 
   const handleTimeframeChange = (newTimeframe: TimeFrame) => {
     setIsLoading(true);
@@ -300,10 +308,10 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
     setTimeout(() => {
       generateSimulatedData(newTimeframe, currentPriceRef.current);
 
-      // Start new interval
+      // Start new interval with 1-minute updates (same as main interval)
       intervalRef.current = setInterval(() => {
         generateSimulatedData(timeframeRef.current, currentPriceRef.current);
-      }, 2000);
+      }, 60000); // Changed from 2000 to 60000 to match the main interval
     }, 300);
 
     onTimeframeChange?.(newTimeframe);
