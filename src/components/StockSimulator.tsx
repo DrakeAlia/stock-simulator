@@ -101,7 +101,7 @@ const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
     const isPositive = (data.change || 0) >= 0;
 
     return (
-      <div className="bg-black/90 px-4 py-3 rounded-lg shadow-lg min-w-[200px]">
+      <div className="bg-black/90 px-3 py-2 sm:px-4 sm:py-3 rounded-lg shadow-lg min-w-[180px] sm:min-w-[200px]">
         <p className="text-gray-400 text-sm border-b border-gray-700 pb-2 mb-2">
           {data.displayTime}
         </p>
@@ -280,8 +280,6 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
     [generateNewPrice]
   );
 
- 
-
   useEffect(() => {
     // Initial data generation
     const initialData = generateDataPoints(
@@ -416,7 +414,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
     >
       <div className="max-w-7xl mx-auto">
         {/* header section */}
-        <div className="mb-4 sm:mb-8">
+        <div className="mb-2 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
               {/* Make heading text responsive */}
@@ -426,11 +424,11 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
               </span>
             </div>
             <div className="mt-2 sm:mt-0 flex flex-col sm:items-end">
-              <span className="text-xl sm:text-2xl font-bold">
+              <span className="text-lg sm:text-2xl font-bold">
                 ${currentPrice.toFixed(2)}
               </span>
               <span
-                className={`text-base sm:text-lg ${
+                className={`text-sm sm:text-lg flex items-center gap-1 ${
                   trend === "up" ? "text-green-500" : "text-red-500"
                 }`}
               >
@@ -438,11 +436,13 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
                 {Math.abs(stockData[stockData.length - 1]?.change || 0).toFixed(
                   2
                 )}
-                (
-                {Math.abs(
-                  stockData[stockData.length - 1]?.changePercent || 0
-                ).toFixed(2)}
-                %)
+                <span className="text-xs sm:text-base">
+                  (
+                  {Math.abs(
+                    stockData[stockData.length - 1]?.changePercent || 0
+                  ).toFixed(2)}
+                  %)
+                </span>
               </span>
             </div>
           </div>
@@ -455,7 +455,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
 
         {/* chart card section */}
         <div
-          className={`${themeStyles[theme].card} rounded-xl p-3 sm:p-6 mb-4 sm:mb-6`}
+          className={`${themeStyles[theme].card} rounded-xl p-2 sm:p-6 mb-4 sm:mb-6`}
         >
           {/* mobile timeframe dropdown */}
           <div className="sm:hidden mb-4">
@@ -463,7 +463,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-between h-9 px-3 text-sm font-medium bg-gray-800/50 border-gray-700 hover:bg-gray-700/50"
+                  className="w-full justify-between h-9 px-3 text-sm font-medium bg-gray-800/50 border-gray-700 hover:bg-gray-700/50 shadow-sm"
                 >
                   <span className="text-gray-100">{selectedTimeframe}</span>
                   <ChevronDown className="h-4 w-4 ml-2 text-gray-400" />
@@ -532,7 +532,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
             </Button>
           </div>
           {/* MarketDetails component */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-2 gap-3 px-2 sm:px-0 sm:grid-cols-4 sm:gap-4 mb-4 sm:mb-6">
             <MetricCard
               title="24h Volume"
               value={volume.toLocaleString(undefined, {
@@ -553,9 +553,11 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
           </div>
           {/* Chart */}
           {isLoading ? (
-            <ChartSkeleton theme={theme} />
+            <div className="h-[calc(100vh-24rem)] min-h-[300px] sm:h-96">
+              <ChartSkeleton theme={theme} />
+            </div>
           ) : (
-            <div className="h-64 sm:h-96">
+            <div className="h-[calc(100vh-24rem)] min-h-[300px] sm:h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                   data={stockData}
@@ -578,12 +580,16 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
                     dataKey="displayTime"
                     tick={{
                       fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
-                      fontSize: "0.7rem",
+                      fontSize: window.innerWidth < 640 ? "0.6rem" : "0.7rem",
                     }}
-                    interval="preserveStartEnd"
-                    minTickGap={30}
-                    height={30}
-                    dy={10}
+                    interval={
+                      window.innerWidth < 640
+                        ? "preserveEnd"
+                        : "preserveStartEnd"
+                    }
+                    minTickGap={window.innerWidth < 640 ? 20 : 30}
+                    height={25}
+                    dy={8}
                     axisLine={{
                       stroke: theme === "dark" ? "#374151" : "#E5E7EB",
                       opacity: 0.2,
@@ -594,14 +600,15 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
                     domain={["auto", "auto"]}
                     tick={{
                       fill: theme === "dark" ? "#9CA3AF" : "#4B5563",
-                      fontSize: "0.7rem",
+                      fontSize: window.innerWidth < 640 ? "0.6rem" : "0.7rem",
                     }}
+                    width={window.innerWidth < 640 ? 45 : 60}
                     axisLine={{
                       stroke: theme === "dark" ? "#374151" : "#E5E7EB",
                       opacity: 0.2,
                     }}
                     tickLine={false}
-                    tickCount={8}
+                    tickCount={window.innerWidth < 640 ? 6 : 8}
                     tickFormatter={(value) => `$${value.toFixed(2)}`}
                   />
                   <Tooltip
@@ -614,6 +621,7 @@ const StockSimulator: React.FC<StockSimulatorProps> = ({
                     cursor={{
                       stroke: theme === "dark" ? "#4B5563" : "#9CA3AF",
                     }}
+                    {...(window.innerWidth < 640 ? { enterDelay: 100 } : {})}
                   />
                   <Area
                     type="monotone"
